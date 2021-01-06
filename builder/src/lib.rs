@@ -1,15 +1,14 @@
 use core::panic;
 
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields};
 
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
-    let builder_name = Ident::new(&format!("{}Builder", struct_name), Span::call_site());
+    let builder_name = format_ident!("{}Builder", struct_name);
 
     let fields = match &input.data {
         Data::Struct(DataStruct {
@@ -35,7 +34,6 @@ pub fn derive(input: TokenStream) -> TokenStream {
             #(#field_names: Option<#field_types>),*
         }
     };
-
     let builder_impl = quote! {
         impl #builder_name {
             #(
@@ -43,13 +41,27 @@ pub fn derive(input: TokenStream) -> TokenStream {
                     self.#field_names = Some(#field_names);
                     self
                 }
+
             )*
+            pub fn build(&self) -> Result<#struct_name, Box<dyn std::error::Error>> {
+                #(
+                    if self.#field_names.is_none() {
+                        Err(format!("{} is not defined. ", stringify!(#field_names)).into())
+                    } else
+                )* {
+                    Ok(#struct_name {
+                        #(#field_names: self.#field_names.to_owned().unwrap()),*
+                    })
+                }
+            }
         }
     };
 
     let output = quote! {
         #struct_impl
+
         #builder_define
+
         #builder_impl
     };
 
