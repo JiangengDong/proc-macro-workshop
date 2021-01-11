@@ -2,7 +2,9 @@ use core::panic;
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields};
+use syn::{
+    parse_macro_input, Data, DataStruct, DeriveInput, Fields, Path, PathSegment, Type, TypePath,
+};
 
 #[proc_macro_derive(Builder)]
 pub fn derive(input: TokenStream) -> TokenStream {
@@ -19,6 +21,18 @@ pub fn derive(input: TokenStream) -> TokenStream {
     };
     let field_names = fields.iter().map(|field| &field.ident).collect::<Vec<_>>();
     let field_types = fields.iter().map(|field| &field.ty).collect::<Vec<_>>();
+
+    let need_check = field_types
+        .iter()
+        .map(|field_type| match field_type {
+            Type::Path(TypePath {
+                path: Path { segments, .. },
+                ..
+            }) if segments[0].ident == "Option" => true,
+            _ => false,
+        })
+        .collect::<Vec<_>>();
+    println!("{:#?}", need_check);
 
     let struct_impl = quote! {
         impl #struct_name {
