@@ -205,7 +205,7 @@ impl<'a> FieldKind<'a> {
                 let #ident = ::std::mem::take(&mut self.#ident);
             },
             FieldKind::Other { ident, .. } => quote! {
-                let #ident = self.#ident.take().ok_or("Missing field")?;
+                let #ident = self.#ident.take().ok_or(::std::format!("Missing field {}", ::std::stringify!(#ident)))?;
             },
         }
     }
